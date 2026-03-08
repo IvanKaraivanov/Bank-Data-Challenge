@@ -49,3 +49,24 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+    - task: AzureCLI@2
+      displayName: 'CD: Run Spark Pipeline in Azure Container Instances (Serverless)'
+      inputs:
+        azureSubscription: $(dockerRegistryServiceConnection)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+            echo "Deploying and running the container in ACI..."
+            az container create \
+              --resource-group rg-navique-challenge \
+              --name navique-spark-run \
+              --image acrnavique2026.azurecr.io/naviquesparkpipeline:latest \
+              --registry-login-server acrnavique2026.azurecr.io \
+              --registry-username $(acr_username) \
+              --registry-password $(acr_password) \
+              --restart-policy Never \
+              --environment-variables \
+                AZURE_TENANT_ID="$(AZURE_TENANT_ID)" \
+                AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
+                AZURE_CLIENT_SECRET="$(AZURE_CLIENT_SECRET)"
