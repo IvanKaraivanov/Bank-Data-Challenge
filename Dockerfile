@@ -1,5 +1,5 @@
 # 1. Use a base image that already has Java and Spark installed
-FROM bitnami/spark:3.5
+FROM bitnamilegacy/spark:3.5.1
 
 # 2. Switch to the root user to install necessary Python libraries
 USER root
