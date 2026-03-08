@@ -1,72 +1,94 @@
-# Docker
-# Build and push an image to Azure Container Registry
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
 - main
 
-resources:
-- repo: self
-
 variables:
-  # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '37b4ae59-4492-44b1-af46-33ee887f636c'
-  imageRepository: 'naviquesparkpipeline'
-  containerRegistry: 'acrnavique2026.azurecr.io'
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  tag: '$(Build.BuildId)'
-
-  # Agent VM image name
-  vmImageName: 'ubuntu-latest'
+- group: navique-vault-secrets # Linked to Key Vault
+- name: dockerRegistryServiceConnection
+  value: '37b4ae59-4492-44b1-af46-33ee887f636c'
+- name: imageRepository
+  value: 'naviquesparkpipeline'
+- name: containerRegistry
+  value: 'acrnavique2026.azurecr.io'
+- name: tag
+  value: '$(Build.BuildId)'
 
 stages:
-- stage: Build
-  displayName: Build and push stage
+# --- STAGE 1: Continuous Integration (Build & Test) ---
+- stage: Build_and_Push
+  displayName: "CI: Build, Test & Push"
   jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: $(vmImageName)
+  - job: CI_Job
+    pool: { vmImage: 'ubuntu-latest' }
     steps:
-    # 1. Install dependencies required for testing
-    - script: |
-        python -m pip install --upgrade pip
-        pip install pyspark pytest
-      displayName: 'Install test dependencies'
-
-    # 2. Execute PySpark unit tests to ensure code quality
-    - script: |
-        pytest tests/
-      displayName: 'Run PySpark Unit Tests'
-
-    # 3. Build and push the Docker image (ONLY if tests pass successfully)
+    - script: pip install pyspark pytest
+      displayName: 'Install Test Dependencies'
+    - script: pytest tests/
+      displayName: 'Run Unit Tests'
     - task: Docker@2
-      displayName: Build and push an image to container registry
+      displayName: "Build and Push Image"
       inputs:
         command: buildAndPush
         repository: $(imageRepository)
-        dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+          latest
 
-    - task: AzureCLI@2
-      displayName: 'CD: Run Spark Pipeline in Azure Container Instances (Serverless)'
-      inputs:
-        azureSubscription: $(dockerRegistryServiceConnection)
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-            echo "Deploying and running the container in ACI..."
-            az container create \
-              --resource-group rg-navique-challenge \
-              --name navique-spark-run \
-              --image acrnavique2026.azurecr.io/naviquesparkpipeline:latest \
-              --registry-login-server acrnavique2026.azurecr.io \
-              --registry-username $(acr_username) \
-              --registry-password $(acr_password) \
-              --restart-policy Never \
-              --environment-variables \
-                AZURE_TENANT_ID="$(AZURE_TENANT_ID)" \
-                AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
-                AZURE_CLIENT_SECRET="$(AZURE_CLIENT_SECRET)"
+# --- STAGE 2: Deployment to TEST Environment ---
+- stage: Deploy_Test
+  displayName: "CD: Deploy to TEST"
+  dependsOn: Build_and_Push
+  jobs:
+  - deployment: Test_Deployment
+    environment: 'Test' # Ensure this environment exists in Azure DevOps
+    pool: { vmImage: 'ubuntu-latest' }
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(dockerRegistryServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az container create \
+                  --resource-group rg-navique-challenge \
+                  --name spark-pipeline-test \
+                  --image $(containerRegistry)/$(imageRepository):$(tag) \
+                  --restart-policy Never \
+                  --environment-variables \
+                    ENV="TEST" \
+                    AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
+                    AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
+                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"
+
+# --- STAGE 3: Deployment to PRODUCTION Environment ---
+- stage: Deploy_Prod
+  displayName: "CD: Deploy to PROD"
+  dependsOn: Deploy_Test
+  condition: succeeded()
+  jobs:
+  - deployment: Prod_Deployment
+    environment: 'Production' # Add Manual Approval check here in DevOps Portal
+    pool: { vmImage: 'ubuntu-latest' }
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(dockerRegistryServiceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az container create \
+                  --resource-group rg-navique-challenge \
+                  --name spark-pipeline-prod \
+                  --image $(containerRegistry)/$(imageRepository):$(tag) \
+                  --restart-policy Never \
+                  --environment-variables \
+                    ENV="PROD" \
+                    AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
+                    AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
+                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"
