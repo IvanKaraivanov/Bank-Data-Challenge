@@ -7,12 +7,13 @@ USER root
 # 3. Set the working directory inside the container
 WORKDIR /app
 
-# 4. Copy the source code and tests from the local machine to the container
+# 4. Install pytest for running automated tests in the CI/CD pipeline
+# 4. Install dependencies FIRST for better Docker layer caching
+RUN pip install pytest
+
+# 5. Copy the source code and tests from the local machine to the container
 COPY src/ /app/src/
 COPY tests/ /app/tests/
-
-# 5. Install pytest for running automated tests in the CI/CD pipeline
-RUN pip install pytest
 
 # 6. Revert to the default non-root user for security best practices
 USER 1001
