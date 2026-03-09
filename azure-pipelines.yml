@@ -6,6 +6,8 @@ variables:
 - group: navique-infra-vars    # Manually added IDs and names
 - name: dockerRegistryServiceConnection
   value: '37b4ae59-4492-44b1-af46-33ee887f636c'
+- name: azureArmServiceConnection
+  value: 'Azure subscription 1 (6a7ef46a-5802-4c50-9528-616be0af6fed)'
 - name: imageRepository
   value: 'naviquesparkpipeline'
 - name: containerRegistry
@@ -49,7 +51,7 @@ stages:
           steps:
           - task: AzureCLI@2
             inputs:
-              azureSubscription: $(dockerRegistryServiceConnection)
+              azureSubscription: $(azureArmServiceConnection)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
@@ -79,7 +81,7 @@ stages:
           steps:
           - task: AzureCLI@2
             inputs:
-              azureSubscription: $(dockerRegistryServiceConnection)
+              azureSubscription: $(azureArmServiceConnection)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
