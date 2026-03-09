@@ -3,6 +3,7 @@ trigger:
 
 variables:
 - group: navique-vault-secrets # Linked to Key Vault
+- group: navique-infra-vars    # Manually added IDs and names
 - name: dockerRegistryServiceConnection
   value: '37b4ae59-4492-44b1-af46-33ee887f636c'
 - name: imageRepository
