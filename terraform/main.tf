@@ -6,7 +6,9 @@ terraform {
   }
 }
 
-provider "azurerm" { features {} }
+provider "azurerm" {
+  features {}
+}
 provider "azuread" {}
 
 # 2. Main Resource Group
