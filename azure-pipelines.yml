@@ -69,7 +69,6 @@ stages:
                 # The 'issecret=true' flag ensures the password is masked in the logs
                 RAW_PASS=$(az acr credential show --name acrnavique2026 --query "passwords[0].value" -o tsv)
                 echo "##vso[task.setvariable variable=ACR_PASSWORD;issecret=true]$RAW_PASS"
-                export ACR_PASSWORD=$RAW_PASS
 
                 # Create Azure Container Instance (ACI) and pass environment variables
                 az container create \
@@ -78,7 +77,7 @@ stages:
                   --image $(containerRegistry)/$(imageRepository):$(tag) \
                   --registry-login-server $(containerRegistry) \
                   --registry-username acrnavique2026 \
-                  --registry-password $(ACR_PASSWORD) \
+                  --registry-password "$RAW_PASS" \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
@@ -118,7 +117,7 @@ stages:
                   --image $(containerRegistry)/$(imageRepository):$(tag) \
                   --registry-login-server $(containerRegistry) \
                   --registry-username acrnavique2026 \
-                  --registry-password $(ACR_PASSWORD) \
+                  --registry-password "$RAW_PASS" \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
