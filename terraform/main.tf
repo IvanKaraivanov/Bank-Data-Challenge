@@ -92,12 +92,20 @@ resource "azurerm_key_vault" "kv" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
 
+  # Policy 1: # Current user access Policy
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = data.azurerm_client_config.current.object_id # Current user (You)
     secret_permissions = ["Get", "List", "Set", "Delete"]
   }
+  # Policy 2: Azure DevOps access policy
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = "3c3b5f9e-fa4f-4f0b-8cb7-e971604b79d0"
+    secret_permissions = ["Get", "List"]
+  }
 }
+
 
 # 9. Store Service Principal Secret in Key Vault
 resource "azurerm_key_vault_secret" "spark_secret" {
