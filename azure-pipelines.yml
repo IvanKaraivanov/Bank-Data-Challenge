@@ -84,8 +84,8 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
-                    _JAVA_OPTIONS="-Duser.home=/tmp -Duser.name=spark" \
-                    HADOOP_USER_NAME="spark" \
+                    _JAVA_OPTIONS="-Duser.home=/tmp -Duser.name=root" \
+                    HADOOP_USER_NAME="root" \
                   --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
@@ -130,8 +130,8 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
-                    _JAVA_OPTIONS="-Duser.home=/tmp -Duser.name=spark" \
-                    HADOOP_USER_NAME="spark" \
+                    _JAVA_OPTIONS="-Duser.home=/tmp -Duser.name=root" \
+                    HADOOP_USER_NAME="root" \
                   --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
