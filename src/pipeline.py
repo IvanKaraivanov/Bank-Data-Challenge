@@ -8,7 +8,7 @@ def run_pipeline():
 
     storage_account_name = "stnaviquedata2026"
     
-    # 2. Dynamic Environment Routing (Взима променливата от пайплайна)
+    # 2. Dynamic Environment Routing
     env = os.getenv("ENV", "TEST")
     print(f"--- Running pipeline in {env} environment ---")
     
