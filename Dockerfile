@@ -16,7 +16,9 @@ COPY src/ /app/src/
 COPY tests/ /app/tests/
 
 # 6. Revert to the default non-root user for security best practices
-USER 1001
+# USER 1001
+# Force the container to run as root to satisfy Java's UnixLoginModule native OS checks
+USER root
 
 # 7. Define the default command to execute when the container starts.
 # IMPORTANT: We add the --packages argument to download Azure Data Lake drivers. 
