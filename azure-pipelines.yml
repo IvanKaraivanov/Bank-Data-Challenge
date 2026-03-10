@@ -84,6 +84,8 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
+                  
+                  --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
                     AZURE_TENANT_ID="$(AZURE_TENANT_ID)"\
@@ -128,7 +130,7 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
+                  --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
-                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"\
-                    HOME="/tmp"
+                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"
