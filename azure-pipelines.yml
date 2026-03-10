@@ -67,7 +67,7 @@ stages:
               inlineScript: |
                 # Fetch ACR Admin Credentials dynamically to avoid hardcoding secrets
                 # The 'issecret=true' flag ensures the password is masked in the logs
-                RAW_PASS=$(az acr repository-admin-key show --name acrnavique2026 --query "passwords[0].value" -o tsv)
+                RAW_PASS=$(az acr credential show --name acrnavique2026 --query "passwords[0].value" -o tsv)
                 echo "##vso[task.setvariable variable=ACR_PASSWORD;issecret=true]$RAW_PASS"
 
                 # Create Azure Container Instance (ACI) and pass environment variables
@@ -106,7 +106,7 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: |
                 # Dynamic credential retrieval for Production ACR access
-                RAW_PASS=$(az acr repository-admin-key show --name acrnavique2026 --query "passwords[0].value" -o tsv)
+                RAW_PASS=$(az acr credential show --name acrnavique2026 --query "passwords[0].value" -o tsv)
                 echo "##vso[task.setvariable variable=ACR_PASSWORD;issecret=true]$RAW_PASS"
 
                 # Create Production Instance with PROD configuration
