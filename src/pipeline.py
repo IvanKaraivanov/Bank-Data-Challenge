@@ -3,10 +3,22 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, when, avg
 
 def run_pipeline():
-    # 1. Initialize the Spark session
-    spark = SparkSession.builder.appName("NaviqueDataPipeline").getOrCreate()
-
+    # Fetch credentials from environment variables
     storage_account_name = "stnaviquedata2026"
+    client_id = os.getenv("AZURE_CLIENT_ID")
+    client_secret = os.getenv("AZURE_CLIENT_SECRET")
+    tenant_id = os.getenv("AZURE_TENANT_ID")
+    endpoint = f"https://login.microsoftonline.com/{tenant_id}/oauth2/token"
+
+    # 1. Initialize the Spark session with configurations BUILT-IN
+    spark = SparkSession.builder \
+        .appName("NaviqueDataPipeline") \
+        .config(f"fs.azure.account.auth.type.{storage_account_name}.dfs.core.windows.net", "OAuth") \
+        .config(f"fs.azure.account.oauth.provider.type.{storage_account_name}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider") \
+        .config(f"fs.azure.account.oauth2.client.id.{storage_account_name}.dfs.core.windows.net", client_id) \
+        .config(f"fs.azure.account.oauth2.client.secret.{storage_account_name}.dfs.core.windows.net", client_secret) \
+        .config(f"fs.azure.account.oauth2.client.endpoint.{storage_account_name}.dfs.core.windows.net", endpoint) \
+        .getOrCreate()
     
     # 2. Dynamic Environment Routing
     env = os.getenv("ENV", "TEST")
