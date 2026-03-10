@@ -86,7 +86,8 @@ stages:
                     ENV="TEST" \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
-                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"
+                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"\
+                    HOME="/tmp"
 
 # --- STAGE 3: Deployment to PRODUCTION Environment ---
 - stage: Deploy_Prod
@@ -129,4 +130,5 @@ stages:
                     ENV="PROD" \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
-                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"
+                    AZURE_TENANT_ID="$(AZURE_TENANT_ID)"\
+                    HOME="/tmp"
