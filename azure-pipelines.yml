@@ -2,18 +2,25 @@ trigger:
 - main
 
 variables:
-- group: navique-vault-secrets # Linked to Key Vault
-- group: navique-infra-vars    # Manually added IDs and names
-- name: dockerRegistryServiceConnection
-  value: '37b4ae59-4492-44b1-af46-33ee887f636c'
-- name: azureArmServiceConnection
-  value: 'Azure subscription 1 (6a7ef46a-5802-4c50-9528-616be0af6fed)'
-- name: imageRepository
-  value: 'naviquesparkpipeline'
-- name: containerRegistry
-  value: 'acrnavique2026.azurecr.io'
-- name: tag
-  value: '$(Build.BuildId)'
+  # Reference to Variable Groups linked to Azure Key Vault and manual variables
+  - group: navique-vault-secrets 
+  - group: navique-infra-vars    
+  
+  # Service Connection for Docker Registry (ACR)
+  - name: dockerRegistryServiceConnection
+    value: '37b4ae59-4492-44b1-af46-33ee887f636c'
+    
+  # Service Connection for Azure Resource Manager (ARM) - used for CLI commands
+  - name: azureArmServiceConnection
+    value: 'Azure subscription 1 (6a7ef46a-5802-4c50-9528-616be0af6fed)'
+    
+  # Container Registry details
+  - name: imageRepository
+    value: 'naviquesparkpipeline'
+  - name: containerRegistry
+    value: 'acrnavique2026.azurecr.io'
+  - name: tag
+    value: '$(Build.BuildId)'
 
 stages:
 # --- STAGE 1: Continuous Integration (Build & Test) ---
@@ -24,11 +31,13 @@ stages:
     pool: { vmImage: 'ubuntu-latest' }
     steps:
     - script: pip install pyspark pytest
-      displayName: 'Install Test Dependencies'
+      displayName: 'Install dependencies for Unit Testing'
+      
     - script: pytest tests/
-      displayName: 'Run Unit Tests'
+      displayName: 'Execute PySpark Unit Tests'
+      
     - task: Docker@2
-      displayName: "Build and Push Image"
+      displayName: "Build and Push Docker Image to ACR"
       inputs:
         command: buildAndPush
         repository: $(imageRepository)
@@ -43,22 +52,32 @@ stages:
   dependsOn: Build_and_Push
   jobs:
   - deployment: Test_Deployment
-    environment: 'Test' # Ensure this environment exists in Azure DevOps
+    environment: 'Test' # Requires 'Permit' access in Azure DevOps UI on first run
     pool: { vmImage: 'ubuntu-latest' }
     strategy:
       runOnce:
         deploy:
           steps:
           - task: AzureCLI@2
+            displayName: "Provision ACI for Test Environment"
             inputs:
               azureSubscription: $(azureArmServiceConnection)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                # Fetch ACR Admin Credentials dynamically to avoid hardcoding secrets
+                # The 'issecret=true' flag ensures the password is masked in the logs
+                RAW_PASS=$(az acr repository-admin-key show --name acrnavique2026 --query "passwords[0].value" -o tsv)
+                echo "##vso[task.setvariable variable=ACR_PASSWORD;issecret=true]$RAW_PASS"
+
+                # Create Azure Container Instance (ACI) and pass environment variables
                 az container create \
                   --resource-group rg-navique-challenge \
                   --name spark-pipeline-test \
                   --image $(containerRegistry)/$(imageRepository):$(tag) \
+                  --registry-login-server $(containerRegistry) \
+                  --registry-username acrnavique2026 \
+                  --registry-password $(ACR_PASSWORD) \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
@@ -70,25 +89,34 @@ stages:
 - stage: Deploy_Prod
   displayName: "CD: Deploy to PROD"
   dependsOn: Deploy_Test
-  condition: succeeded()
+  condition: succeeded() # Only runs if Test deployment is successful
   jobs:
   - deployment: Prod_Deployment
-    environment: 'Production' # Add Manual Approval check here in DevOps Portal
+    environment: 'Production' # Manual Approval should be configured for this environment
     pool: { vmImage: 'ubuntu-latest' }
     strategy:
       runOnce:
         deploy:
           steps:
           - task: AzureCLI@2
+            displayName: "Provision ACI for Production Environment"
             inputs:
               azureSubscription: $(azureArmServiceConnection)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                # Dynamic credential retrieval for Production ACR access
+                RAW_PASS=$(az acr repository-admin-key show --name acrnavique2026 --query "passwords[0].value" -o tsv)
+                echo "##vso[task.setvariable variable=ACR_PASSWORD;issecret=true]$RAW_PASS"
+
+                # Create Production Instance with PROD configuration
                 az container create \
                   --resource-group rg-navique-challenge \
                   --name spark-pipeline-prod \
                   --image $(containerRegistry)/$(imageRepository):$(tag) \
+                  --registry-login-server $(containerRegistry) \
+                  --registry-username acrnavique2026 \
+                  --registry-password $(ACR_PASSWORD) \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
