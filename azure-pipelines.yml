@@ -84,12 +84,11 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
-                  
+                    _JAVA_OPTIONS="-Duser.home=/tmp" \
                   --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
                     AZURE_TENANT_ID="$(AZURE_TENANT_ID)"\
-                    HOME="/tmp"
 
 # --- STAGE 3: Deployment to PRODUCTION Environment ---
 - stage: Deploy_Prod
@@ -130,6 +129,7 @@ stages:
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
+                    _JAVA_OPTIONS="-Duser.home=/tmp" \
                   --secure-environment-variables \
                     AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
                     AZURE_CLIENT_SECRET="$(AZURE-CLIENT-SECRET)" \
