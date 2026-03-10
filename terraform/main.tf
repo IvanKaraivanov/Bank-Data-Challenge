@@ -28,6 +28,8 @@ resource "azurerm_storage_account" "sa" {
 }
 
 # 4. Logical Environments: Test and Production Containers
+
+# --- Input Containers (Raw Data) ---
 resource "azurerm_storage_container" "test_data" {
   name                  = "test-data"
   storage_account_name  = azurerm_storage_account.sa.name
@@ -36,6 +38,19 @@ resource "azurerm_storage_container" "test_data" {
 
 resource "azurerm_storage_container" "prod_data" {
   name                  = "prod-data"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
+
+# --- Output Containers (Processed Data) ---
+resource "azurerm_storage_container" "test_output" {
+  name                  = "test-output"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_container" "prod_output" {
+  name                  = "prod-output"
   storage_account_name  = azurerm_storage_account.sa.name
   container_access_type = "private"
 }
