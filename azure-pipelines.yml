@@ -78,6 +78,7 @@ stages:
                   --registry-login-server $(containerRegistry) \
                   --registry-username acrnavique2026 \
                   --registry-password "$RAW_PASS" \
+                  --os-type Linux \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
@@ -118,6 +119,7 @@ stages:
                   --registry-login-server $(containerRegistry) \
                   --registry-username acrnavique2026 \
                   --registry-password "$RAW_PASS" \
+                  --os-type Linux \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
