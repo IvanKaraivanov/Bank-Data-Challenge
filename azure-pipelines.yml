@@ -79,6 +79,8 @@ stages:
                   --registry-username acrnavique2026 \
                   --registry-password "$RAW_PASS" \
                   --os-type Linux \
+                  --cpu 1 \
+                  --memory 2 \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="TEST" \
@@ -120,6 +122,8 @@ stages:
                   --registry-username acrnavique2026 \
                   --registry-password "$RAW_PASS" \
                   --os-type Linux \
+                  --cpu 1 \
+                  --memory 2 \
                   --restart-policy Never \
                   --environment-variables \
                     ENV="PROD" \
