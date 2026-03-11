@@ -33,7 +33,7 @@ stages:
     - script: pip install pyspark pytest
       displayName: 'Install dependencies for Unit Testing'
       
-    - script: pytest tests/
+    - script: python -m pytest tests/
       displayName: 'Execute PySpark Unit Tests'
       
     - task: Docker@2
