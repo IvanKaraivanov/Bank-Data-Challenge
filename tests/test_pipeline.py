@@ -1,40 +1,69 @@
 import pytest
+from unittest.mock import patch
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when
+from src.pipeline import BankingDataPipeline
 
-# Create a local Spark session specifically for testing purposes
+# 1. Create a local Spark session specifically for testing purposes (in-memory)
 @pytest.fixture(scope="session")
 def spark():
-    return SparkSession.builder.master("local[1]").appName("TestPipeline").getOrCreate()
+    """Provides a local Spark session to be reused across all tests."""
+    return SparkSession.builder \
+        .appName("pytest-local-spark") \
+        .master("local[1]") \
+        .getOrCreate()
 
-def test_fix_prjiem_typo(spark):
-    """Test if the specific typo 'PRJIEM' is correctly replaced with 'PRIJEM'."""
-    # Arrange: Create mock data with the typo
-    trans_data = [("1", "PRJIEM", 100), ("2", "VALID", 200)]
-    df_trans = spark.createDataFrame(trans_data, ["account_id", "type", "amount"])
+# 2. Mock the Azure initialization to prevent external network/cloud calls
+@patch('src.pipeline.BaseETLPipeline._initialize_spark')
+def test_transform_logic(mock_init_spark, spark):
+    """
+    Tests the core business logic of the pipeline independently of the infrastructure.
+    Verifies typo correction, invalid account filtering, and loan aggregation.
+    """
+    # ARRANGE: Set up the environment and mock data
     
-    # Act: Apply the transformation logic for the typo
-    df_cleaned = df_trans.withColumn("type", when(col("type") == "PRJIEM", "PRIJEM").otherwise(col("type")))
+    # Force the pipeline to use our local Spark session instead of the Azure-configured one
+    mock_init_spark.return_value = spark
     
-    # Assert: Validate the results
-    types = [row["type"] for row in df_cleaned.collect()]
-    assert "PRJIEM" not in types
-    assert "PRIJEM" in types
-    assert "VALID" in types # Ensure other values are untouched
+    # Initialize the pipeline class (safe now, as Azure initialization is mocked)
+    pipeline = BankingDataPipeline()
+    
+    # Create mock transaction data containing edge cases
+    trans_data = [
+        (1, 100, "PRJIEM"),  # Edge case 1: Typo that needs fixing
+        (2, 200, "PRIJEM"),  # Normal valid record
+        (3, 999, "VYDAJ")    # Edge case 2: Invalid account_id (999 does not exist in accounts)
+    ]
+    df_trans = spark.createDataFrame(trans_data, ["trans_id", "account_id", "type"])
 
-def test_filter_invalid_accounts(spark):
-    """Test if transactions without a matching valid account are filtered out."""
-    # Arrange: Create mock transactions (account 3 is missing from accounts table)
-    trans_data = [("1", "PRIJEM", 100), ("3", "PRIJEM", 50)]
-    df_trans = spark.createDataFrame(trans_data, ["account_id", "type", "amount"])
+    # Create mock account data
+    account_data = [(100, 10), (200, 20)] 
+    df_account = spark.createDataFrame(account_data, ["account_id", "district_id"])
+
+    # Create mock loan data
+    loan_data = [(1, 100, 5000.0), (2, 200, 10000.0)]
+    df_loan = spark.createDataFrame(loan_data, ["loan_id", "account_id", "amount"])
+
+    # Bundle the DataFrames into the expected input format
+    raw_data = {"trans": df_trans, "account": df_account, "loan": df_loan}
+
+    # ACT: Execute the actual business logic
+    result = pipeline.transform(raw_data)
     
-    acc_data = [("1",)]
-    df_account = spark.createDataFrame(acc_data, ["account_id"])
+    df_cleaned_trans = result["cleaned_trans"]
+    df_avg_loan = result["avg_loan"]
+
+    # ASSERT: Validate the output against expected business rules
     
-    # Act: Apply the inner join logic
-    df_result = df_trans.join(df_account, "account_id", "inner")
+    # Assertion 1: Was the typo 'PRJIEM' successfully corrected to 'PRIJEM'?
+    types = [row["type"] for row in df_cleaned_trans.collect()]
+    assert "PRJIEM" not in types, "The typo 'PRJIEM' was not fixed in the output."
+    assert types.count("PRIJEM") == 2, "There should be exactly two 'PRIJEM' transactions."
     
-    # Assert: Validate that only account "1" remains
-    results = df_result.collect()
-    assert len(results) == 1
-    assert results[0]["account_id"] == "1"
+    # Assertion 2: Were transactions without a valid account filtered out?
+    # trans_id 3 (with account 999) should be dropped during the inner join
+    assert df_cleaned_trans.count() == 2, "Transactions with invalid accounts were not filtered out."
+
+    # Assertion 3: Is the average loan amount per district calculated correctly?
+    avg_loans = {row["district_id"]: row["average_loan_amount"] for row in df_avg_loan.collect()}
+    assert avg_loans[10] == 5000.0, "Average loan calculation for district 10 is incorrect."
+    assert avg_loans[20] == 10000.0, "Average loan calculation for district 20 is incorrect."
